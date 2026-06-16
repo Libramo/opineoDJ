@@ -13,9 +13,7 @@ Claude Code reads this file at the start of every session.
 
 ## Current Goal
 
-**Phase 1.2** — Initialize the Next.js project with full stack setup:
-App Router, Tailwind v4, shadcn/ui, better-auth, Drizzle client connected
-to Supabase.
+**Phase 2.3** — Public survey form (`/survey/[slug]`) — all 4 question types, respondent profile collection, submission.
 
 ---
 
@@ -37,12 +35,28 @@ to Supabase.
       4 RPC functions, full RLS on all tables
 - [x] **1.1 — Drizzle config** (`drizzle.config.ts`) — strict mode, migrations
       output to `supabase/migrations/`
+- [x] **1.2 — Next.js project init** — App Router, Tailwind v4, all dependencies
+      installed (drizzle-orm, better-auth, @supabase/supabase-js, next-themes,
+      react-hook-form, zod, resend, motion, shadcn/ui)
+- [x] **1.3 — Base design system**
+  - Root layout — Lora + Geist fonts loaded, ThemeProvider wired, metadata set, lang="fr"
+  - `globals.css` — full OpineoDJ token palette (oklch), light + dark, mapped to shadcn semantic variables
+  - shadcn/ui core components installed: button, input, select, textarea, card, separator, badge, tooltip, dialog, sheet, dropdown-menu, table, tabs, progress
+  - `ThemeToggle.tsx` — animated spring toggle, amber/green thumb, reduced motion aware, accessible
+- [x] **2.1 — Admin dashboard layout + better-auth**
+  - better-auth configured with Drizzle adapter + email/password
+  - `app/(admin)/layout.tsx` — session guard, redirects to `/login`
+  - `AdminSidebar.tsx` — fixed 240px sidebar, nav links, theme toggle, user info
+  - `app/login/page.tsx` + `LoginForm.tsx` — sign in form, French labels
+  - `scripts/seed-admin.ts` — admin account seeder
+- [x] **DB migrated to Neon** — `@neondatabase/serverless` + `drizzle-orm/neon-http`
+- [x] **Full domain schema pushed to Neon** — 4 enums, 10 domain tables, full Drizzle relations
 
 ---
 
 ## In Progress
 
-- [ ] **1.2 — Next.js project init**
+- [ ] **2.3 — Public survey form (`/survey/[slug]`)**
 
 ---
 
@@ -85,13 +99,19 @@ must not block Level 3 later.
 ### Level 1 — Basic Survey Tool (Phases 1–3)
 *Target: ~6 weeks*
 
-**Phase 1 — Foundation**
+**Phase 1 — Foundation** ✅ COMPLETE
 - [x] 1.1 Full Supabase schema + Drizzle ORM schema (`lib/db/schema.ts`)
-- [ ] 1.2 Next.js project init (App Router, Tailwind v4, shadcn/ui, better-auth)
-- [ ] 1.3 Base design system (CSS tokens mapped to shadcn, core components installed)
+- [x] 1.2 Next.js project init (App Router, Tailwind v4, shadcn/ui, better-auth)
+- [x] 1.3 Base design system (CSS tokens mapped to shadcn, core components installed)
 
 **Phase 2 — Collection**
-- [ ] 2.1 Admin dashboard layout + better-auth (sign in, session, protected routes)
+- [x] 2.1 Admin dashboard layout + better-auth (sign in, session, protected routes)
+- [x] 2.2 Survey creation flow — clients, campaigns, waves, survey builder
+  - Clients list + create/delete
+  - Campaigns list + create/archive, campaign detail with waves
+  - Wave detail with surveys list
+  - Survey builder: questions editor (add/edit/delete, multiple choice options), quotas editor (demographic dropdowns, grouped by key), settings (publish/close/reopen, public URL)
+  - `/dashboard/surveys` global list page
 - [ ] 2.2 Survey creation flow (campaign → wave → questions → quotas)
 - [ ] 2.3 Public survey form (`/survey/[slug]`) — all 4 question types
 - [ ] 2.4 Response submission + storage (answers, respondent profile)

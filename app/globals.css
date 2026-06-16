@@ -1,26 +1,184 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-lora);
+  --font-heading: var(--font-lora);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ---------------------------------------------------------------------------
+   LIGHT MODE — OpineoDJ tokens
+   Slate green (#2D6A4F) + Analytical amber (#C77B2E)
+   Warm off-white base, not pure white
+--------------------------------------------------------------------------- */
+:root {
+  /* Base */
+  --background: oklch(0.973 0.006 85); /* #F7F6F2 warm off-white */
+  --foreground: oklch(0.13 0.005 85); /* #1C1C1A warm near-black */
+
+  /* Cards / surfaces */
+  --card: oklch(1 0 0); /* #FFFFFF */
+  --card-foreground: oklch(0.13 0.005 85);
+
+  /* Popovers */
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.13 0.005 85);
+
+  /* Primary — slate green */
+  --primary: oklch(0.42 0.09 155); /* #2D6A4F */
+  --primary-foreground: oklch(0.973 0.006 85); /* warm white on green */
+
+  /* Secondary — elevated surface */
+  --secondary: oklch(0.935 0.008 85); /* #EFEDE6 */
+  --secondary-foreground: oklch(0.13 0.005 85);
+
+  /* Muted */
+  --muted: oklch(0.935 0.008 85); /* #EFEDE6 */
+  --muted-foreground: oklch(0.44 0.006 85); /* #6B6B63 */
+
+  /* Accent — analytical amber */
+  --accent: oklch(0.62 0.12 60); /* #C77B2E */
+  --accent-foreground: oklch(1 0 0);
+
+  /* Destructive */
+  --destructive: oklch(0.48 0.18 27); /* #C0392B */
+
+  /* Borders & inputs */
+  --border: oklch(0.878 0.008 85); /* #E0DDD5 */
+  --input: oklch(0.878 0.008 85);
+  --ring: oklch(0.775 0.007 85); /* #C5C2B8 */
+
+  /* Charts */
+  --chart-1: oklch(0.42 0.09 155); /* #2D6A4F slate green */
+  --chart-2: oklch(0.62 0.12 60); /* #C77B2E amber */
+  --chart-3: oklch(0.55 0.07 175); /* #5E8B7E teal */
+  --chart-4: oklch(0.47 0.1 25); /* #A44A3F terracotta */
+  --chart-5: oklch(0.53 0.06 75); /* #8C7B4E warm brown */
+
+  /* Border radius */
+  --radius: 0.625rem;
+
+  /* Sidebar */
+  --sidebar: oklch(0.973 0.006 85);
+  --sidebar-foreground: oklch(0.13 0.005 85);
+  --sidebar-primary: oklch(0.42 0.09 155);
+  --sidebar-primary-foreground: oklch(0.973 0.006 85);
+  --sidebar-accent: oklch(0.935 0.008 85);
+  --sidebar-accent-foreground: oklch(0.13 0.005 85);
+  --sidebar-border: oklch(0.878 0.008 85);
+  --sidebar-ring: oklch(0.775 0.007 85);
+}
+
+/* ---------------------------------------------------------------------------
+   DARK MODE — OpineoDJ tokens
+   Warm near-black base (not blue-tinted)
+--------------------------------------------------------------------------- */
+.dark {
+  /* Base */
+  --background: oklch(0.1 0.004 85); /* #141412 warm near-black */
+  --foreground: oklch(0.945 0.006 85); /* #F0EEE8 warm off-white */
+
+  /* Cards / surfaces */
+  --card: oklch(0.135 0.004 85); /* #1E1E1B */
+  --card-foreground: oklch(0.945 0.006 85);
+
+  /* Popovers */
+  --popover: oklch(0.135 0.004 85);
+  --popover-foreground: oklch(0.945 0.006 85);
+
+  /* Primary — slate green lightened for dark */
+  --primary: oklch(0.55 0.09 155); /* #3D8B6A */
+  --primary-foreground: oklch(0.1 0.004 85);
+
+  /* Secondary — elevated surface */
+  --secondary: oklch(0.165 0.004 85); /* #272724 */
+  --secondary-foreground: oklch(0.945 0.006 85);
+
+  /* Muted */
+  --muted: oklch(0.165 0.004 85);
+  --muted-foreground: oklch(0.62 0.005 85); /* #9A9A8E */
+
+  /* Accent — analytical amber dark */
+  --accent: oklch(0.67 0.13 60); /* #D4893A */
+  --accent-foreground: oklch(0.1 0.004 85);
+
+  /* Destructive */
+  --destructive: oklch(0.6 0.18 27); /* #E05C4B */
+
+  /* Borders & inputs */
+  --border: oklch(0.2 0.004 85); /* #2E2E2A */
+  --input: oklch(0.245 0.004 85); /* #3E3E38 */
+  --ring: oklch(0.245 0.004 85);
+
+  /* Charts */
+  --chart-1: oklch(0.55 0.09 155); /* #3D8B6A */
+  --chart-2: oklch(0.67 0.13 60); /* #D4893A */
+  --chart-3: oklch(0.65 0.07 175); /* #6FA897 */
+  --chart-4: oklch(0.57 0.1 25); /* #C4605A */
+  --chart-5: oklch(0.63 0.07 75); /* #A89660 */
+
+  /* Sidebar */
+  --sidebar: oklch(0.135 0.004 85);
+  --sidebar-foreground: oklch(0.945 0.006 85);
+  --sidebar-primary: oklch(0.55 0.09 155);
+  --sidebar-primary-foreground: oklch(0.1 0.004 85);
+  --sidebar-accent: oklch(0.165 0.004 85);
+  --sidebar-accent-foreground: oklch(0.945 0.006 85);
+  --sidebar-border: oklch(0.2 0.004 85);
+  --sidebar-ring: oklch(0.245 0.004 85);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
