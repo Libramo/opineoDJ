@@ -4,7 +4,13 @@ import { nanoid } from "nanoid";
 import { eq, count } from "drizzle-orm";
 import { render } from "react-email";
 import { db } from "@/db";
-import { surveys, responses, answers, respondentProfiles, user } from "@/db/schema";
+import {
+  surveys,
+  responses,
+  answers,
+  respondentProfiles,
+  user,
+} from "@/db/schema";
 import { createHash } from "crypto";
 import { resend, FROM_ADDRESS } from "@/lib/email/resend";
 import { SubmissionNotification } from "@/lib/email/templates/SubmissionNotification";
@@ -31,7 +37,7 @@ const submitSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
 
@@ -49,14 +55,14 @@ export async function POST(
   if (!survey) {
     return NextResponse.json(
       { success: false, error: "Sondage introuvable." },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
   if (survey.status !== "active") {
     return NextResponse.json(
       { success: false, error: "Ce sondage n'est plus actif." },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -66,7 +72,7 @@ export async function POST(
   if (!parsed.success) {
     return NextResponse.json(
       { success: false, error: "Données invalides." },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -93,7 +99,7 @@ export async function POST(
         optionId: a.optionId ?? null,
         valueText: a.valueText ?? null,
         valueNumber: a.valueNumber ?? null,
-      }))
+      })),
     );
   }
 
@@ -123,7 +129,7 @@ async function sendNotification(
   surveyId: string,
   surveyTitle: string,
   surveySlug: string,
-  analystId: string
+  analystId: string,
 ) {
   try {
     const [analyst] = await db
@@ -133,8 +139,7 @@ async function sendNotification(
 
     if (!analyst?.email) return;
 
-    const notifyEmail =
-      process.env.ANALYST_NOTIFY_EMAIL ?? analyst.email;
+    const notifyEmail = analyst.email;
 
     const [{ total }] = await db
       .select({ total: count() })
@@ -150,7 +155,7 @@ async function sendNotification(
         surveyUrl,
         responseCount: total,
         submittedAt: new Date(),
-      })
+      }),
     );
 
     await resend.emails.send({

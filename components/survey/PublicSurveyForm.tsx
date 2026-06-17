@@ -1,12 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import {
+  Field,
+  FieldLabel,
+  FieldError,
+} from "@/components/ui/field";
 import { CheckCircle2, ChevronRight, ChevronLeft, Send } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -37,20 +45,22 @@ type Survey = {
   slug: string;
 };
 
-type AnswerValue = {
-  questionId: string;
+type AnswerField = {
   optionId?: string | null;
   valueText?: string | null;
   valueNumber?: number | null;
 };
 
-type Profile = {
-  gender: string;
-  ageRange: string;
-  region: string;
-  profession: string;
-  csp: string;
+type ProfileKey = "gender" | "ageRange" | "region" | "profession" | "csp";
+
+type FormValues = {
+  answers: Record<string, AnswerField | undefined>;
+  profile: Record<ProfileKey, string>;
 };
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 const GENDER_OPTIONS = ["Homme", "Femme", "Autre", "Préfère ne pas répondre"];
 const AGE_RANGE_OPTIONS = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
@@ -82,6 +92,65 @@ const CSP_OPTIONS = [
   "Inactif / Retraité(e)",
 ];
 
+const PROFILE_FIELDS: {
+  key: ProfileKey;
+  label: string;
+  options: string[];
+}[] = [
+  { key: "gender", label: "Genre", options: GENDER_OPTIONS },
+  { key: "ageRange", label: "Tranche d'âge", options: AGE_RANGE_OPTIONS },
+  { key: "region", label: "Région", options: REGION_OPTIONS },
+  { key: "profession", label: "Profession", options: PROFESSION_OPTIONS },
+  { key: "csp", label: "Catégorie socioprofessionnelle", options: CSP_OPTIONS },
+];
+
+// ---------------------------------------------------------------------------
+// Schema builder
+// ---------------------------------------------------------------------------
+
+function buildAnswerSchema(q: Question): z.ZodTypeAny {
+  const base = z.object({
+    optionId: z.string().nullable().optional(),
+    valueText: z.string().nullable().optional(),
+    valueNumber: z.number().nullable().optional(),
+  });
+
+  if (!q.required) return base.optional();
+
+  return base.superRefine((val, ctx) => {
+    if (!val) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Ce champ est obligatoire." });
+      return;
+    }
+    let valid = false;
+    if (q.type === "multiple_choice") valid = !!val.optionId;
+    else if (q.type === "open_text") valid = !!val.valueText?.trim();
+    else if (q.type === "rating" || q.type === "number") valid = val.valueNumber != null;
+    else if (q.type === "date") valid = !!val.valueText?.trim();
+    if (!valid) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Ce champ est obligatoire." });
+    }
+  });
+}
+
+function buildFormSchema(questions: Question[]) {
+  const answersShape: Record<string, z.ZodTypeAny> = {};
+  for (const q of questions) {
+    answersShape[q.id] = buildAnswerSchema(q);
+  }
+  return z.object({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    answers: z.object(answersShape as any),
+    profile: z.object({
+      gender: z.string().default(""),
+      ageRange: z.string().default(""),
+      region: z.string().default(""),
+      profession: z.string().default(""),
+      csp: z.string().default(""),
+    }),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -92,8 +161,8 @@ function MultipleChoiceInput({
   onChange,
 }: {
   question: Question;
-  value: AnswerValue | undefined;
-  onChange: (v: AnswerValue) => void;
+  value: AnswerField | undefined;
+  onChange: (v: AnswerField) => void;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -103,9 +172,7 @@ function MultipleChoiceInput({
           <button
             key={opt.id}
             type="button"
-            onClick={() =>
-              onChange({ questionId: question.id, optionId: opt.id })
-            }
+            onClick={() => onChange({ optionId: opt.id })}
             className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors ${
               selected
                 ? "border-primary bg-primary text-primary-foreground"
@@ -126,18 +193,15 @@ function RatingInput({
   onChange,
 }: {
   question: Question;
-  value: AnswerValue | undefined;
-  onChange: (v: AnswerValue) => void;
+  value: AnswerField | undefined;
+  onChange: (v: AnswerField) => void;
 }) {
   const scaleMin = question.config?.scaleMin ?? 1;
   const scaleMax = question.config?.scaleMax ?? 10;
-  const labelMin = question.config?.labelMin;
-  const labelMax = question.config?.labelMax;
   const steps = Array.from(
     { length: scaleMax - scaleMin + 1 },
     (_, i) => scaleMin + i,
   );
-  const selected = value?.valueNumber;
 
   return (
     <div className="flex flex-col gap-4">
@@ -146,11 +210,9 @@ function RatingInput({
           <button
             key={n}
             type="button"
-            onClick={() =>
-              onChange({ questionId: question.id, valueNumber: n })
-            }
+            onClick={() => onChange({ valueNumber: n })}
             className={`w-10 h-10 rounded-md border text-sm font-mono font-medium transition-colors ${
-              selected === n
+              value?.valueNumber === n
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-foreground hover:bg-secondary"
             }`}
@@ -159,100 +221,38 @@ function RatingInput({
           </button>
         ))}
       </div>
-      {(labelMin || labelMax) && (
+      {(question.config?.labelMin || question.config?.labelMax) && (
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>{labelMin ?? ""}</span>
-          <span>{labelMax ?? ""}</span>
+          <span>{question.config?.labelMin ?? ""}</span>
+          <span>{question.config?.labelMax ?? ""}</span>
         </div>
       )}
     </div>
   );
 }
 
-function OpenTextInput({
-  question,
+function ProfileToggleGroup({
+  label,
+  options,
   value,
   onChange,
 }: {
-  question: Question;
-  value: AnswerValue | undefined;
-  onChange: (v: AnswerValue) => void;
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
 }) {
   return (
-    <Textarea
-      placeholder="Votre réponse..."
-      value={value?.valueText ?? ""}
-      onChange={(e) =>
-        onChange({ questionId: question.id, valueText: e.target.value })
-      }
-      rows={4}
-      className="resize-none"
-    />
-  );
-}
-
-function DateInput({
-  question,
-  value,
-  onChange,
-}: {
-  question: Question;
-  value: AnswerValue | undefined;
-  onChange: (v: AnswerValue) => void;
-}) {
-  return (
-    <Input
-      type="date"
-      value={value?.valueText ?? ""}
-      onChange={(e) =>
-        onChange({ questionId: question.id, valueText: e.target.value })
-      }
-    />
-  );
-}
-
-function NumberInput({
-  question,
-  value,
-  onChange,
-}: {
-  question: Question;
-  value: AnswerValue | undefined;
-  onChange: (v: AnswerValue) => void;
-}) {
-  return (
-    <Input
-      type="number"
-      placeholder="Votre réponse..."
-      value={value?.valueNumber ?? ""}
-      onChange={(e) =>
-        onChange({
-          questionId: question.id,
-          valueNumber: e.target.value === "" ? null : Number(e.target.value),
-        })
-      }
-    />
-  );
-}
-
-function ProfileStep({
-  profile,
-  onChange,
-}: {
-  profile: Profile;
-  onChange: (key: keyof Profile, val: string) => void;
-}) {
-  const select = (label: string, key: keyof Profile, opts: string[]) => (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-foreground">{label}</label>
+      <span className="text-sm font-medium text-foreground">{label}</span>
       <div className="flex flex-wrap gap-2">
-        {opts.map((opt) => (
+        {options.map((opt) => (
           <button
             key={opt}
             type="button"
-            onClick={() => onChange(key, profile[key] === opt ? "" : opt)}
+            onClick={() => onChange(value === opt ? "" : opt)}
             className={`px-3 py-1.5 rounded text-sm border transition-colors ${
-              profile[key] === opt
+              value === opt
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-foreground hover:bg-secondary"
             }`}
@@ -263,37 +263,27 @@ function ProfileStep({
       </div>
     </div>
   );
-
-  return (
-    <div className="flex flex-col gap-6">
-      <p className="text-sm text-muted-foreground">
-        Ces informations nous permettent de pondérer les résultats et sont
-        traitées de manière anonyme.
-      </p>
-      {select("Genre", "gender", GENDER_OPTIONS)}
-      {select("Tranche d'âge", "ageRange", AGE_RANGE_OPTIONS)}
-      {select("Région", "region", REGION_OPTIONS)}
-      {select("Profession", "profession", PROFESSION_OPTIONS)}
-      {select("Catégorie socioprofessionnelle", "csp", CSP_OPTIONS)}
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
-// Main component
+// Animation variants
 // ---------------------------------------------------------------------------
 
-const variants = {
+const stepVariants = {
   enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 40 : -40 }),
   center: { opacity: 1, x: 0 },
   exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -40 : 40 }),
 };
 
-const reducedVariants = {
+const reducedStepVariants = {
   enter: { opacity: 0, x: 0 },
   center: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: 0 },
 };
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 export function PublicSurveyForm({
   survey,
@@ -303,47 +293,37 @@ export function PublicSurveyForm({
   questions: Question[];
 }) {
   const prefersReduced = useReducedMotion();
-  const v = prefersReduced ? reducedVariants : variants;
+  const motionVariants = prefersReduced ? reducedStepVariants : stepVariants;
 
-  // steps: 0..n-1 = questions, n = profile, n+1 = done
   const PROFILE_STEP = questions.length;
   const DONE_STEP = questions.length + 1;
 
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
-  const [profile, setProfile] = useState<Profile>({
-    gender: "",
-    ageRange: "",
-    region: "",
-    profession: "",
-    csp: "",
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const totalSteps = questions.length + 1; // questions + profile
+  const schema = useMemo(() => buildFormSchema(questions), [questions]);
+
+  const form = useForm<FormValues>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(schema) as any,
+    defaultValues: {
+      answers: Object.fromEntries(questions.map((q) => [q.id, undefined])),
+      profile: { gender: "", ageRange: "", region: "", profession: "", csp: "" },
+    },
+  });
+
+  const totalSteps = questions.length + 1;
   const progress =
     step >= DONE_STEP ? 100 : Math.round((step / totalSteps) * 100);
-
   const currentQuestion = step < questions.length ? questions[step] : null;
 
-  function isCurrentAnswered(): boolean {
-    if (step >= PROFILE_STEP) return true;
-    const q = questions[step];
-    if (!q.required) return true;
-    const a = answers[q.id];
-    if (!a) return false;
-    if (q.type === "multiple_choice") return !!a.optionId;
-    if (q.type === "open_text") return !!a.valueText?.trim();
-    if (q.type === "rating") return a.valueNumber != null;
-    if (q.type === "date") return !!a.valueText?.trim();
-    if (q.type === "number") return a.valueNumber != null;
-    return false;
-  }
-
-  function goNext() {
-    if (!isCurrentAnswered()) return;
+  async function goNext() {
+    if (currentQuestion) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const valid = await form.trigger(`answers.${currentQuestion.id}` as any);
+      if (!valid) return;
+    }
     setDir(1);
     setStep((s) => s + 1);
   }
@@ -354,34 +334,26 @@ export function PublicSurveyForm({
     setStep((s) => s - 1);
   }
 
-  function setAnswer(v: AnswerValue) {
-    setAnswers((prev) => ({ ...prev, [v.questionId]: v }));
-  }
-
-  function setProfileField(key: keyof Profile, val: string) {
-    setProfile((prev) => ({ ...prev, [key]: val }));
-  }
-
-  async function handleSubmit() {
-    setSubmitting(true);
-    setError(null);
+  async function onSubmit(data: FormValues) {
+    setSubmitError(null);
     try {
+      const answers = Object.entries(data.answers)
+        .filter(([, val]) => val != null)
+        .map(([questionId, val]) => ({ questionId, ...val }));
+
       const res = await fetch(`/api/surveys/${survey.slug}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          answers: Object.values(answers),
-          profile,
-        }),
+        body: JSON.stringify({ answers, profile: data.profile }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error ?? "Erreur inconnue.");
       setDir(1);
       setStep(DONE_STEP);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Une erreur est survenue.");
-    } finally {
-      setSubmitting(false);
+      setSubmitError(
+        e instanceof Error ? e.message : "Une erreur est survenue.",
+      );
     }
   }
 
@@ -409,7 +381,7 @@ export function PublicSurveyForm({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
       {/* Progress */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -429,7 +401,7 @@ export function PublicSurveyForm({
           <motion.div
             key={step}
             custom={dir}
-            variants={v}
+            variants={motionVariants}
             initial="enter"
             animate="center"
             exit="exit"
@@ -440,61 +412,93 @@ export function PublicSurveyForm({
             className="flex flex-col gap-5"
           >
             {currentQuestion ? (
-              <>
-                <div className="flex items-start gap-2">
-                  <Badge
-                    variant="outline"
-                    className="shrink-0 mt-0.5 font-mono text-xs"
-                  >
-                    {step + 1}
-                  </Badge>
-                  <p className="text-base font-medium text-foreground leading-snug">
-                    {currentQuestion.text}
-                    {currentQuestion.required && (
-                      <span className="text-destructive ml-1">*</span>
-                    )}
-                  </p>
-                </div>
+              <Controller
+                name={`answers.${currentQuestion.id}` as `answers.${string}`}
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>
+                      <div className="flex items-start gap-2">
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 mt-0.5 font-mono text-xs"
+                        >
+                          {step + 1}
+                        </Badge>
+                        <span className="text-base font-medium text-foreground leading-snug">
+                          {currentQuestion.text}
+                          {currentQuestion.required && (
+                            <span className="text-destructive ml-1">*</span>
+                          )}
+                        </span>
+                      </div>
+                    </FieldLabel>
 
-                {currentQuestion.type === "multiple_choice" && (
-                  <MultipleChoiceInput
-                    question={currentQuestion}
-                    value={answers[currentQuestion.id]}
-                    onChange={setAnswer}
-                  />
+                    {currentQuestion.type === "multiple_choice" && (
+                      <MultipleChoiceInput
+                        question={currentQuestion}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                    {currentQuestion.type === "rating" && (
+                      <RatingInput
+                        question={currentQuestion}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                    {currentQuestion.type === "open_text" && (
+                      <Textarea
+                        id={field.name}
+                        placeholder="Votre réponse..."
+                        value={field.value?.valueText ?? ""}
+                        onChange={(e) =>
+                          field.onChange({ valueText: e.target.value })
+                        }
+                        aria-invalid={fieldState.invalid}
+                        rows={4}
+                        className="resize-none"
+                      />
+                    )}
+                    {currentQuestion.type === "date" && (
+                      <Input
+                        id={field.name}
+                        type="date"
+                        value={field.value?.valueText ?? ""}
+                        onChange={(e) =>
+                          field.onChange({ valueText: e.target.value })
+                        }
+                        aria-invalid={fieldState.invalid}
+                      />
+                    )}
+                    {currentQuestion.type === "number" && (
+                      <Input
+                        id={field.name}
+                        type="number"
+                        placeholder="Votre réponse..."
+                        value={field.value?.valueNumber ?? ""}
+                        onChange={(e) =>
+                          field.onChange({
+                            valueNumber:
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value),
+                          })
+                        }
+                        aria-invalid={fieldState.invalid}
+                      />
+                    )}
+
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
                 )}
-                {currentQuestion.type === "rating" && (
-                  <RatingInput
-                    question={currentQuestion}
-                    value={answers[currentQuestion.id]}
-                    onChange={setAnswer}
-                  />
-                )}
-                {currentQuestion.type === "open_text" && (
-                  <OpenTextInput
-                    question={currentQuestion}
-                    value={answers[currentQuestion.id]}
-                    onChange={setAnswer}
-                  />
-                )}
-                {currentQuestion.type === "date" && (
-                  <DateInput
-                    question={currentQuestion}
-                    value={answers[currentQuestion.id]}
-                    onChange={setAnswer}
-                  />
-                )}
-                {currentQuestion.type === "number" && (
-                  <NumberInput
-                    question={currentQuestion}
-                    value={answers[currentQuestion.id]}
-                    onChange={setAnswer}
-                  />
-                )}
-              </>
+              />
             ) : (
-              // Profile step
-              <>
+              /* Profile step */
+              <div className="flex flex-col gap-6">
                 <div className="flex flex-col gap-1">
                   <h3 className="text-base font-medium text-foreground">
                     Votre profil{" "}
@@ -502,20 +506,42 @@ export function PublicSurveyForm({
                       (facultatif)
                     </span>
                   </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Ces informations nous permettent de pondérer les résultats
+                    et sont traitées de manière anonyme.
+                  </p>
                 </div>
-                <ProfileStep profile={profile} onChange={setProfileField} />
-              </>
+
+                {PROFILE_FIELDS.map(({ key, label, options }) => (
+                  <Controller
+                    key={key}
+                    name={`profile.${key}`}
+                    control={form.control}
+                    render={({ field }) => (
+                      <ProfileToggleGroup
+                        label={label}
+                        options={options}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                ))}
+              </div>
             )}
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Error */}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {/* Submit error */}
+      {submitError && (
+        <p className="text-sm text-destructive">{submitError}</p>
+      )}
 
       {/* Navigation */}
       <div className="flex items-center justify-between pt-2">
         <Button
+          type="button"
           variant="ghost"
           size="sm"
           onClick={goPrev}
@@ -527,25 +553,21 @@ export function PublicSurveyForm({
         </Button>
 
         {step < PROFILE_STEP ? (
-          <Button
-            onClick={goNext}
-            disabled={!isCurrentAnswered()}
-            className="gap-1"
-          >
+          <Button type="button" onClick={goNext} className="gap-1">
             Suivant
             <ChevronRight className="h-4 w-4" />
           </Button>
         ) : (
           <Button
-            onClick={handleSubmit}
-            disabled={submitting}
+            type="submit"
+            disabled={form.formState.isSubmitting}
             className="gap-1"
           >
-            {submitting ? "Envoi..." : "Soumettre"}
+            {form.formState.isSubmitting ? "Envoi..." : "Soumettre"}
             <Send className="h-4 w-4" />
           </Button>
         )}
       </div>
-    </div>
+    </form>
   );
 }

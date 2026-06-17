@@ -69,10 +69,32 @@ When Claude Code starts a session, it reads these files in order:
 
 ## Forms
 
-- All forms use **react-hook-form** + **Zod** for validation
-- Never use a bare `<form>` tag — always use the shadcn/ui `Form` component
-- Validation errors display inline below the relevant field
-- The submit button is disabled while loading (`isPending`)
+- All forms use **react-hook-form** (`useForm` + `zodResolver`) + **Zod** for validation
+- Form state managed via `useForm<FormValues>` — no local `useState` for field values
+- Use `<Controller />` for every controlled input; never use `register` for custom inputs
+- Use the shadcn `<Field />` component to wrap each `<Controller />` for accessible markup:
+  ```tsx
+  <Controller
+    name="fieldName"
+    control={form.control}
+    render={({ field, fieldState }) => (
+      <Field data-invalid={fieldState.invalid}>
+        <FieldLabel htmlFor={field.name}>Label</FieldLabel>
+        <Input {...field} id={field.name} aria-invalid={fieldState.invalid} />
+        <FieldDescription>Helper text.</FieldDescription>
+        {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+      </Field>
+    )}
+  />
+  ```
+- Import `Field`, `FieldLabel`, `FieldDescription`, `FieldError` from `@/components/ui/field`
+- For wizard / multi-step forms: call `form.trigger(fieldName)` to validate a single field
+  before advancing to the next step — do not use a separate `isAnswered` helper
+- The submit button is disabled while `form.formState.isSubmitting`
+- Dynamic schemas (field list known only at runtime) are built with a factory function
+  outside the component and memoized with `useMemo` inside it
+- Never use a bare `<form>` tag — always use `form.handleSubmit(onSubmit)` on the `<form>` element
+- Validation errors display inline below the relevant field via `<FieldError />`
 
 ---
 
