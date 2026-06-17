@@ -6,7 +6,8 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
-  trustedOrigins: ["https://surveys.blyanalytics.com"],
+  baseURL: process.env.BETTER_AUTH_URL,
+  trustedOrigins: ["*.blyanalytics.com", "*.vercel.app"],
   emailAndPassword: {
     enabled: true,
   },
