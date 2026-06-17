@@ -9,6 +9,7 @@ import {
   integer,
   real,
   unique,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 // ---------------------------------------------------------------------------
@@ -125,10 +126,18 @@ export const questions = pgTable(
     type: questionTypeEnum("type").notNull(),
     order: integer("order").notNull(),
     required: boolean("required").default(true).notNull(),
+    config: jsonb("config").$type<QuestionConfig>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("questions_survey_id_idx").on(t.surveyId)],
 );
+
+export type QuestionConfig = {
+  scaleMin?: number;
+  scaleMax?: number;
+  labelMin?: string;
+  labelMax?: string;
+};
 
 export const questionOptions = pgTable(
   "question_options",

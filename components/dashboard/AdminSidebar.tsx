@@ -36,7 +36,10 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
         {nav.map(({ label, href, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
+          const active =
+            href === "/dashboard"
+              ? pathname === "/dashboard"
+              : pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Copy, Check } from "lucide-react";
 import { updateSurveyStatus } from "@/lib/actions/surveys";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -11,6 +13,15 @@ type Survey = InferSelectModel<typeof surveys>;
 
 export function SurveySettings({ survey }: { survey: Survey }) {
   const [isPending, setIsPending] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+
+  function handleCopy() {
+    navigator.clipboard.writeText(`${origin}/survey/${survey.slug}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   async function handleStatusChange(status: "active" | "closed" | "draft") {
     setIsPending(true);
@@ -121,15 +132,41 @@ export function SurveySettings({ survey }: { survey: Survey }) {
         </p>
         <div className="flex items-center gap-2 p-2.5 rounded-md bg-muted border border-border">
           <span className="text-xs font-mono text-foreground flex-1 truncate">
-            /survey/{survey.slug}
+            {origin}/survey/{survey.slug}
           </span>
           <Button
             size="sm"
             variant="ghost"
             className="text-xs h-6 px-2 rounded"
-            onClick={() => navigator.clipboard.writeText(`/survey/${survey.slug}`)}
+            onClick={handleCopy}
           >
-            Copier
+            <AnimatePresence mode="wait" initial={false}>
+              {copied ? (
+                <motion.span
+                  key="check"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-1 text-primary"
+                >
+                  <Check className="h-3 w-3" />
+                  Copié
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="copy"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-1"
+                >
+                  <Copy className="h-3 w-3" />
+                  Copier
+                </motion.span>
+              )}
+            </AnimatePresence>
           </Button>
         </div>
       </div>

@@ -7,13 +7,13 @@ Claude Code reads this file at the start of every session.
 
 ## Current Phase
 
-**Phase 1 — Foundation** — In Progress
+**Phase 2 — Collection** — In Progress
 
 ---
 
 ## Current Goal
 
-**Phase 2.3** — Public survey form (`/survey/[slug]`) — all 4 question types, respondent profile collection, submission.
+**Phase 3.1** — PostgreSQL aggregations (%, averages, distributions per question type) → feeds Phase 3.2 public results dashboard.
 
 ---
 
@@ -51,12 +51,32 @@ Claude Code reads this file at the start of every session.
   - `scripts/seed-admin.ts` — admin account seeder
 - [x] **DB migrated to Neon** — `@neondatabase/serverless` + `drizzle-orm/neon-http`
 - [x] **Full domain schema pushed to Neon** — 4 enums, 10 domain tables, full Drizzle relations
+- [x] **2.3 — Public survey form (`/survey/[slug]`)**
+  - `app/(public)/layout.tsx` — public route group layout
+  - `app/(public)/survey/[slug]/page.tsx` — Server Component: loads survey + questions by slug, handles draft/closed states, `generateMetadata` for SEO
+  - `components/survey/PublicSurveyForm.tsx` — wizard Client Component: all 4 question types (multiple_choice, rating, open_text, date, number), demographic profile step, `AnimatePresence` slide transitions, reduced motion aware
+  - `app/api/surveys/[slug]/submit/route.ts` — POST handler: Zod validation, inserts `responses` + `answers` + `respondent_profiles`, IP hashing
+- [x] **2.4 — Response submission + storage** — implemented as part of 2.3 (submit route + DB inserts)
+- [x] **Copy URL fix** — `SurveySettings` now copies full absolute URL using `NEXT_PUBLIC_APP_URL` env variable (works on server, client, and in future Resend emails)
+- [x] **2.5 — Email notifications via Resend**
+  - `lib/email/resend.ts` — Resend singleton, `FROM_ADDRESS` from `RESEND_FROM_ADDRESS` env
+  - `lib/email/templates/SubmissionNotification.tsx` — branded email (slate green header, response count, survey link)
+  - Submit route fires email after DB insert — fire-and-forget, never blocks response, errors logged not thrown
+- [x] **QuestionsEditor overhaul**
+  - Individual input fields for multiple choice options (add/remove per option, min 2 validation)
+  - Required toggle (Switch), type description hints
+  - Edit dialog: options synced without deleting answered options (FK constraint safe)
+  - Drag-and-drop reorder via `@dnd-kit/react` + `@dnd-kit/helpers` — persisted via `/api/questions/reorder` route handler (not server action — avoids Next.js re-render on drop)
+  - Reverts to original order on server error
+- [x] **Rating scale configurable** — `config` JSONB column added to `questions` table, analyst sets scaleMin, scaleMax, labelMin, labelMax; public form renders accordingly
+- [x] **AdminSidebar active link fix** — `/dashboard` only highlights on exact match
+- [x] **seed-admin.ts** — upsert pattern, supports multiple users, loads `.env` via `tsx --env-file`
 
 ---
 
 ## In Progress
 
-- [ ] **2.3 — Public survey form (`/survey/[slug]`)**
+- [ ] **3.1 — Aggregations** (%, averages, distributions per question type)
 
 ---
 
@@ -112,10 +132,10 @@ must not block Level 3 later.
   - Wave detail with surveys list
   - Survey builder: questions editor (add/edit/delete, multiple choice options), quotas editor (demographic dropdowns, grouped by key), settings (publish/close/reopen, public URL)
   - `/dashboard/surveys` global list page
-- [ ] 2.2 Survey creation flow (campaign → wave → questions → quotas)
-- [ ] 2.3 Public survey form (`/survey/[slug]`) — all 4 question types
-- [ ] 2.4 Response submission + storage (answers, respondent profile)
-- [ ] 2.5 Email notifications via Resend (on submission + milestones)
+- [x] 2.2 Survey creation flow (campaign → wave → questions → quotas)
+- [x] 2.3 Public survey form (`/survey/[slug]`) — all 4 question types
+- [x] 2.4 Response submission + storage (answers, respondent profile)
+- [x] 2.5 Email notifications via Resend (on submission + milestones)
 
 **Phase 3 — Basic Analysis**
 - [ ] 3.1 PostgreSQL RPC aggregations (%, averages, distributions per question type)
