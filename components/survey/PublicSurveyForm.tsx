@@ -21,7 +21,12 @@ type Question = {
   type: "multiple_choice" | "rating" | "open_text" | "date" | "number";
   required: boolean;
   order: number;
-  config?: { scaleMin?: number; scaleMax?: number; labelMin?: string; labelMax?: string } | null;
+  config?: {
+    scaleMin?: number;
+    scaleMax?: number;
+    labelMin?: string;
+    labelMax?: string;
+  } | null;
   options: QuestionOption[];
 };
 
@@ -46,7 +51,6 @@ type Profile = {
   profession: string;
   csp: string;
 };
-
 
 const GENDER_OPTIONS = ["Homme", "Femme", "Autre", "Préfère ne pas répondre"];
 const AGE_RANGE_OPTIONS = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
@@ -129,7 +133,10 @@ function RatingInput({
   const scaleMax = question.config?.scaleMax ?? 10;
   const labelMin = question.config?.labelMin;
   const labelMax = question.config?.labelMax;
-  const steps = Array.from({ length: scaleMax - scaleMin + 1 }, (_, i) => scaleMin + i);
+  const steps = Array.from(
+    { length: scaleMax - scaleMin + 1 },
+    (_, i) => scaleMin + i,
+  );
   const selected = value?.valueNumber;
 
   return (
@@ -139,7 +146,9 @@ function RatingInput({
           <button
             key={n}
             type="button"
-            onClick={() => onChange({ questionId: question.id, valueNumber: n })}
+            onClick={() =>
+              onChange({ questionId: question.id, valueNumber: n })
+            }
             className={`w-10 h-10 rounded-md border text-sm font-mono font-medium transition-colors ${
               selected === n
                 ? "border-primary bg-primary text-primary-foreground"
@@ -233,11 +242,7 @@ function ProfileStep({
   profile: Profile;
   onChange: (key: keyof Profile, val: string) => void;
 }) {
-  const select = (
-    label: string,
-    key: keyof Profile,
-    opts: string[]
-  ) => (
+  const select = (label: string, key: keyof Profile, opts: string[]) => (
     <div className="flex flex-col gap-2">
       <label className="text-sm font-medium text-foreground">{label}</label>
       <div className="flex flex-wrap gap-2">
@@ -330,9 +335,9 @@ export function PublicSurveyForm({
     const a = answers[q.id];
     if (!a) return false;
     if (q.type === "multiple_choice") return !!a.optionId;
-    if (q.type === "open_text") return !!(a.valueText?.trim());
+    if (q.type === "open_text") return !!a.valueText?.trim();
     if (q.type === "rating") return a.valueNumber != null;
-    if (q.type === "date") return !!(a.valueText?.trim());
+    if (q.type === "date") return !!a.valueText?.trim();
     if (q.type === "number") return a.valueNumber != null;
     return false;
   }
@@ -391,7 +396,9 @@ export function PublicSurveyForm({
       >
         <CheckCircle2 className="h-14 w-14 text-primary" strokeWidth={1.5} />
         <div className="flex flex-col gap-2">
-          <h2 className="font-serif text-2xl text-foreground">Merci pour votre participation !</h2>
+          <h2 className="font-serif text-2xl text-foreground">
+            Merci pour votre participation !
+          </h2>
           <p className="text-sm text-muted-foreground max-w-sm">
             Vos réponses ont bien été enregistrées. Elles contribueront à
             l&apos;analyse de cette enquête.
@@ -417,7 +424,7 @@ export function PublicSurveyForm({
       </div>
 
       {/* Step content */}
-      <div className="relative overflow-hidden min-h-[260px]">
+      <div className="relative overflow-hidden min-h-65">
         <AnimatePresence mode="wait" custom={dir}>
           <motion.div
             key={step}
@@ -426,13 +433,19 @@ export function PublicSurveyForm({
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: prefersReduced ? 0.15 : 0.3, ease: "easeInOut" }}
+            transition={{
+              duration: prefersReduced ? 0.15 : 0.3,
+              ease: "easeInOut",
+            }}
             className="flex flex-col gap-5"
           >
             {currentQuestion ? (
               <>
                 <div className="flex items-start gap-2">
-                  <Badge variant="outline" className="shrink-0 mt-0.5 font-mono text-xs">
+                  <Badge
+                    variant="outline"
+                    className="shrink-0 mt-0.5 font-mono text-xs"
+                  >
                     {step + 1}
                   </Badge>
                   <p className="text-base font-medium text-foreground leading-snug">
@@ -484,7 +497,10 @@ export function PublicSurveyForm({
               <>
                 <div className="flex flex-col gap-1">
                   <h3 className="text-base font-medium text-foreground">
-                    Votre profil <span className="text-muted-foreground font-normal">(facultatif)</span>
+                    Votre profil{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (facultatif)
+                    </span>
                   </h3>
                 </div>
                 <ProfileStep profile={profile} onChange={setProfileField} />
@@ -495,9 +511,7 @@ export function PublicSurveyForm({
       </div>
 
       {/* Error */}
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       {/* Navigation */}
       <div className="flex items-center justify-between pt-2">
@@ -522,7 +536,11 @@ export function PublicSurveyForm({
             <ChevronRight className="h-4 w-4" />
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={submitting} className="gap-1">
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="gap-1"
+          >
             {submitting ? "Envoi..." : "Soumettre"}
             <Send className="h-4 w-4" />
           </Button>

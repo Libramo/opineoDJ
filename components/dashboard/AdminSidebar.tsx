@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { BarChart2, FileText, Users, Settings, LayoutDashboard, FolderOpen } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { BarChart2, FileText, Users, Settings, LayoutDashboard, FolderOpen, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { authClient } from "@/lib/auth-client";
 
 const nav = [
   { label: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
@@ -21,6 +22,12 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    await authClient.signOut();
+    router.push("/login");
+  }
 
   return (
     <aside className="flex flex-col w-60 shrink-0 h-full border-r border-border bg-card">
@@ -58,13 +65,22 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
         })}
       </nav>
 
-      {/* Footer — user + theme toggle */}
+      {/* Footer — user + actions */}
       <div className="shrink-0 border-t border-border px-4 py-3 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-medium text-foreground truncate">{user.name ?? user.email}</p>
           <p className="text-xs text-muted-foreground truncate">{user.email}</p>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <button
+            onClick={handleSignOut}
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            title="Se déconnecter"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </aside>
   );
